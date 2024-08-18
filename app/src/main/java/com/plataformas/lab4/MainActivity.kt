@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +14,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.paddingFromBaseline
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -35,13 +39,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.plataformas.lab4.ui.theme.Lab4Theme
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,11 +77,14 @@ fun Layout(modifier: Modifier = Modifier) {
     var imageUrl by remember { mutableStateOf("") };
     var elementsList = remember { mutableStateListOf<Item>() };
     fun add() {
-        if(name.isNotEmpty() && imageUrl.isNotEmpty()) {
-            elementsList.add(Item(name, imageUrl));
+        if(name.isNotEmpty() && imageUrl.isNotEmpty() && elementsList.none { it.name == name }) {
+            elementsList.add(Item(name.trim().replaceFirstChar { it.uppercase() }, imageUrl.trim()));
             name = "";
             imageUrl = "";
         }
+    }
+    fun delete(index: Int){
+        elementsList.removeAt(index);
     }
     Column(
         modifier = modifier
@@ -80,43 +94,55 @@ fun Layout(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         MyForm(name, { name = it }, imageUrl, { imageUrl = it }, ::add)
-        ElementList(elements = elementsList)
+        ElementList(elements = elementsList,::delete)
+
     }
 
 }
 
 @Composable
-fun ElementList(elements: List<Item>){
+fun ElementList(elements: List<Item>, delete: (Int) -> Unit){
+    fun deleteItem(index: Int){
+        delete(index);
+    }
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(elements) { element ->
-            ElementItem(element)
+        itemsIndexed(elements) { index,element ->
+            ElementItem(index,element, ::deleteItem)
         }
     }
 }
 
 @Composable
-fun ElementItem(item: Item){
+fun ElementItem(index: Int, item: Item, delete: (Int) -> Unit){
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(70.dp)
             .background(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(10.dp))
-            .padding(10.dp),
+            .padding(0.dp)
+            .clickable { delete(index) },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
 
     ) {
-        Text(modifier = Modifier
-            .padding(4.dp),
+        Text(modifier = Modifier.width(200.dp)
+            .padding(15.dp),
+            softWrap = true,
+            overflow = TextOverflow.Ellipsis,
             text = item.name,
             fontSize = 20.sp,
-            fontWeight = FontWeight.Bold)
-        Image(painter = painterResource(id = R.drawable.ic_launcher_foreground),
+            fontWeight = FontWeight.Normal)
+        AsyncImage(
+            model = item.imageUrl,
             modifier = Modifier.
-            size(50.dp),
-            contentDescription = "nose"
+            fillMaxHeight()
+                .padding(3.dp)
+                .clip(RoundedCornerShape(10.dp)),
+            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+            contentDescription = null,
         )
     }
 }
@@ -127,7 +153,8 @@ fun MyForm(
     onNameChange: (String) -> Unit,
     imageUrl:String,
     onImageUrlChange: (String) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+
 ) {
     Column(
         modifier = Modifier
@@ -141,6 +168,7 @@ fun MyForm(
                 value = name,
                 onValueChange = onNameChange,
                 label = { Text("Nombre") },
+                singleLine= true,
                 modifier = Modifier
                     .weight(1f)
                     .padding(4.dp)
@@ -149,6 +177,7 @@ fun MyForm(
                 value = imageUrl,
                 onValueChange = onImageUrlChange,
                 label = { Text("Url de imagen") },
+                singleLine= true,
                 modifier = Modifier
                     .weight(1f)
                     .padding(4.dp)
